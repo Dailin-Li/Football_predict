@@ -1,0 +1,178 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+data1819_1<-data1819[1:280,]
+gm_res <- goalmodel(goals1 = data1819_1$hgoal, goals2 = data1819_1$vgoal,
+                     team1 = data1819_1$home, team2=data1819_1$visitor,dc=TRUE)
+
+predict_1819_1y_p<-predict_result(gm_res, team1=data1819$home[281:380], team2=data1819$visitor[281:380], return_df = TRUE)
+final_1y_p<-cbind(predict_1819_1y_p,data1819_bet,data1819$result[281:380])
+xi(data1819[281:380,],final_1y_p)
+bet_pll(data1819[281:380,],final_1y_p)
+write.csv(final_1y_p,file="C:\\Users\\lidai\\Desktop\\Football\\final_1y_p.csv")
+```
+
+
+```{r}
+bet_pll<-function(data,predict){
+sum_xi=0
+for (i in 1:dim(data)[1]){
+if (data[i,]$result=="H"){
+sum_xi=sum_xi+log(predict$BbAvH[i])}
+else if (data[i,]$result=="A"){
+sum_xi=sum_xi+log(predict$BbAvD[i])}
+else{sum_xi=sum_xi+log(predict$BbAvA[i])}
+}
+return(sum_xi)}
+```
+
+```{r}
+
+bet_pll<-function(data,predict){
+sum_xi=0
+for (i in 1:dim(data)[1]){
+if (data[i,]$result=="H"){
+sum_xi=sum_xi+log(predict$B365H[i])}
+else if (data[i,]$result=="A"){
+sum_xi=sum_xi+log(predict$B365D[i])}
+else{sum_xi=sum_xi+log(predict$B365A[i])}
+}
+return(sum_xi)}
+
+
+```
+
+
+```{r}
+bet<-c(
+bet_pll(data1415[281:380,],bet(data1415_n[c(281:380),c(50,52,54)])),
+bet_pll(data1516[281:380,],bet(data1516_n[c(281:380),c(47,49,51)])),
+bet_pll(data1617[281:380,],bet(data1617_n[c(281:380),c(47,49,51)])),
+bet_pll(data1718[281:380,],bet(data1718_n[c(281:380),c(47,49,51)])),
+bet_pll(data1819[281:380,],bet(data1819_n[c(281:380),c(44,46,48)])))
+```
+```{r}
+library(xlsx)
+Lin<-read.xlsx("C:\\Users\\lidai\\Desktop\\Football\\Lin.xlsx")
+
+
+```
+
+
+
+
+```{r}
+df<-data.frame(season,po1,dc1,po3,dc3,bet)
+
+
+```
+
+
+```{r}
+
+ggplot()+geom_line(data=data.frame(season,po1),aes(season,po1,group=1,color="Poisson regression 1 year"),size=0.8)+geom_point(data=data.frame(season,po1),aes(season,po1,group=1,color="Poisson regression 1 year"),size=3)+
+  geom_line(data=data.frame(season,po3),aes(season,po3,group=1,color="Poisson regression 3 years"),size=0.8)+geom_point(data=data.frame(season,po3),aes(season,po3,group=1,color="Poisson regression 3 years"),size=3)+
+  geom_line(data=data.frame(season,dc1),aes(season,dc1,group=1,color="Dixon Coles 1 year "),size=0.8)+geom_point(data=data.frame(season,dc1),aes(season,dc1,group=1,color="Dixon Coles 1 year "),size=3)+
+  geom_line(data=data.frame(season,dc3),aes(season,dc3,group=1,color="Dixon Coles 3 years"),size=0.8)+geom_point(data=data.frame(season,dc3),aes(season,dc3,group=1,color="Dixon Coles 3 years"),size=3)+
+  geom_line(data=data.frame(season,bet),aes(season,bet,group=1,color=" Odds"),size=0.8)+geom_point(data=data.frame(season,bet),aes(season,bet,group=1,color=" Odds"),size=3)+
+  geom_line(data=data.frame(season,null),aes(season,null,group=1,color=" Odds"),size=0.8)+geom_point(data=data.frame(season,null),aes(season,null,group=1,color=" Null model"),size=3)+
+
+  xlab('season')+ylab("PLL value")+ggtitle("Comparison of different models by PLL")
+
+
+```
+
+
+
+
+```{r}
+goal<-goalmodel(goals1 = data1819[1:280,]$hgoal, goals2 = data1819[1:280,]$vgoal,
+                     team1 = data1819[1:280,]$home, team2=data1819[1:280,]$visitor
+          )
+df_goal<-data.frame(goal$parameters$attack,goal$parameters$defense)
+
+
+```
+
+
+```{r}
+names(df_goal)<-c("att","def")
+df_goal[,3]<-row.names(df_goal)
+names(df_goal)[3]<-c("team")
+
+ ggplot(data=df_goal,aes(x = att, y = def)) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_label(aes(label = team)) +
+  scale_x_continuous(limits = c(-1, 1)) +scale_y_continuous(limits = c(-1, 1))+
+  theme_minimal() +
+  labs(title = "EPL team ratings",
+       subtitle = "From 2018/08/10 to 2019/03/02",
+       x = "Defence",
+       y = "Attack")
+```
+
+
+
+
+
+
+```{r}
+poisson<-rbind(data1415,data1516,data1617,data1718,data1819)
+
+df_po<-data.frame(poisson[which(poisson$home=="Arsenal"),]$hgoal,poisson[which(poisson$visitor=="Arsenal"),]$vgoal)
+names(df_po)<-c("home","away")
+df_new<-data.frame(rbind(cbind(df_po$home,rep("home",length(df_po$home))),
+cbind(df_po$away,rep("away",length(df_po$away)))))
+names(df_new)<-c("count","Position")
+```
+
+
+
+```{r}
+
+
+ggplot(df_new)+geom_histogram(aes(x=count, fill=Position),stat="count", position="dodge",binwidth=0.5)+labs(x='Number of goals',y='Frequency',title='Arsenal as home and away',subtitle = 'From 14/15 to 18/19')
+
+
+
+
+```
+
+
+
+```{r}
+
+su<-read.csv("C:\\Users\\lidai\\Desktop\\match_result.csv")
+su<-na.omit(su)
+su<-su[200:dim(su)[1],]
+
+
+```
+
+
+
+```{r}
+su_bet<-cbind(su$B365W,su$B365L)
+su_bet<-bet(su_bet)
+sum(log(su_bet[,1]))/
+sum(log(su$winner_winning))
+
+
+```
+
+
+
+```{r}
+data0607<-edit(edit_time(read.csv("C:\\Users\\lidai\\Desktop\\Football\\0607.csv")))
+data0607_n<-read.csv("C:\\Users\\lidai\\Desktop\\Football\\0607.csv")
+```
+
+
+```{r}
+bet_pll(data0607,bet(data0607_n[,c(24,25,26)]))/380
+
+```

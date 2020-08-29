@@ -1,0 +1,227 @@
+---
+title: "Untitled"
+output: html_document
+---
+```{r}
+england %>% 
+  filter(Season %in% c(1996),
+         tier==c(1)) %>% 
+  mutate(Date = as.Date(Date)) -> england_2011
+data<-england_2011
+```
+
+;/
+```{r}
+library(goalmodel)
+library(dplyr) # Useful for data manipulation.
+
+
+```
+```{r}
+data1314<-edit_time(edit(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1314.csv")))
+data1415<-edit_time(edit(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1415.csv")))[1:380,]
+data1516<-edit_time(edit(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1516.csv")))
+data1617<-edit_time(edit(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1617.csv")))
+data1718<-edit_time(edit(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1718.csv")))
+data1819<-edit_time(edit(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1819.csv")))
+data<-rbind(data1415,data1516,data1617)
+#data<-data1617
+data1415_n<-edit_time(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1415.csv"))[1:380,]
+data1516_n<-edit_time(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1516.csv"))
+data1617_n<-edit_time(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1617.csv"))
+data1718_n<-edit_time(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1718.csv"))
+data1819_n<-edit_time(read.csv("C:\\Users\\lidai\\Desktop\\Football\\1819.csv"))
+#View(data)
+
+```
+
+
+```{r}
+edit<-function(data){data<-data[,c(2:7)]
+names(data)<-c("Date","home","visitor","hgoal","vgoal","result")   
+data[order(data$Date,decreasing=TRUE),]
+return(data)}
+```
+```{r}
+edit_time<-function(data){
+  data$Date<-as.character((data$Date))
+  if (nchar(data$Date[1])==8){
+data$Date<-paste("20",substr(data$Date,7,8),substr(data$Date,3,6),substr(data$Date,1,2),sep = "")
+  }
+  else{data$Date<-paste(substr(data$Date,7,10),substr(data$Date,3,6),substr(data$Date,1,2),sep = "")}
+return(data)
+}
+```
+```{r}
+xi<-function(data,predict){
+  
+sum_xi=0
+for (i in 1:dim(data)[1]){
+if (data[i,]$result=="H"){
+sum_xi=sum_xi+log(predict$p1[i])}
+else if (data[i,]$result=="A"){
+sum_xi=sum_xi+log(predict$p2[i])}
+else{sum_xi=sum_xi+log(predict$pd[i])}
+}
+return(sum_xi)}
+```
+
+```{r}
+k<-100
+s<-5
+sum_xi=0
+train_data<-data[1:(dim(data)[1]-k),]
+test_data<-data[(dim(data)[1]-k+1):dim(data)[1],]
+for (i in 1:20){ 
+my_weights <- weights_dc(train_data$Date, xi=0.004)
+
+gm_res_dc <- goalmodel(goals1 = train_data$hgoal, goals2 = train_data$vgoal,
+                     team1 = train_data$home, team2=train_data$visitor,
+                     dc=TRUE,weights = my_weights,optim_method = "L-BFGS-B")
+predict<-predict_result(gm_res_dc, team1=test_data[1:s]$home, team2=test_data[1:s]$visitor, return_df = TRUE)
+
+sum_xi<-sum_xi+xi(test_data[1:s,],predict)
+train_data<-rbind(train_data,test_data[1:s,])
+test_data<-test_data[(s+1):dim(test_data)[1],]
+}
+sum_xi
+```
+```{r}
+train_data<-train_data[1:(dim(train_data)[1]-1),]
+my_weights <- weights_dc(train_data$Date, xi=0.0015)
+gm_res_dc <- goalmodel(goals1 = train_data$hgoal, goals2 = train_data$vgoal,
+                     team1 = train_data$home, team2=train_data$visitor,
+                     dc=TRUE,weights = my_weights)
+```
+
+```{r}
+#input data
+k<-100
+s<-5
+xi_value<-seq(0,0.006,0.0002)
+
+sum_xi=rep(0,length(xi_value))
+i=1
+
+for (j in xi_value){
+train_data<-data[1:(dim(data)[1]-k),]
+test_data<-data[(dim(data)[1]-k+1):dim(data)[1],]
+
+while (!(is.null(test_data))){
+my_weights <- weights_dc(train_data$Date, xi=xi_value[i])
+
+gm_res_dc <- goalmodel(goals1 = train_data$hgoal, goals2 = train_data$vgoal,
+                     team1 = train_data$home, team2=train_data$visitor,dc=TRUE,
+           weights = my_weights)
+
+if (dim(test_data)[1]>s){
+  predict<-predict_result(gm_res_dc, team1=test_data[1:s,]$home, team2=test_data[1:s,]$visitor, return_df = TRUE)
+sum_xi[i]<-sum_xi[i]+xi(test_data[1:s,],predict)
+train_data<-rbind(train_data,test_data[1:s,])
+test_data<-test_data[(s+1):dim(test_data)[1],]}
+
+else{
+   predict<-predict_result(gm_res_dc, team1=test_data$home, team2=test_data$visitor, return_df = TRUE)
+sum_xi[i]<-sum_xi[i]+xi(test_data,predict)
+train_data<-rbind(train_data,test_data)
+test_data<-c()}
+}
+i=i+1
+}
+sum_xi
+```
+,optim_method = "L-BFGS-B"
+```{r}
+plot(seq(0,0.006,0.0002),sum_xi)
+final_xi_value<-seq(0,0.004,0.0002)[which.max(sum_xi)]
+```
+```{r}
+sum_xi_dc3<-sum_xi
+
+```
+
+
+
+
+
+
+```{r}
+#sum_xi_po3
+#sum_xi_po1
+#sum_xi_dc1
+#sum_xi_dc3
+#p <- ggplot(df1, aes(x=dose, y=len, group=supp)) + geom_line(aes(color=supp))+ geom_point(aes(color=supp))
+#p
+
+#df1<- data.frame( ¦Î = seq(0,0.004,0.0002),Dixon_Coles=sum_xi_dc1,Poisson_Regression=sum_xi_po1)
+p <- ggplot()+ geom_line(data.frame(¦Î=seq(0,0.004,0.0002),Dixon_Coles=sum_xi_dc1,),aes(x=¦Î,y=Dixon_Coles))+
+geom_line(data.frame(¦Î=seq(0,0.004,0.0002),Poisson_Regression=sum_xi_po1,),aes(x=¦Î,y=Dixon_Coles))
+p
+
+
+
+```
+
+
+
+
+```{r}
+final_sum_xi_dc4<-
+c(-96.75860,-96.56864,-96.39457,-96.23810,-96.10046,-95.98176,-95.87939,-95.79714,-95.73034,
+ -95.68427,-95.64519, -95.62286, -95.60777, -95.60503 ,-95.61187,-95.62753,-95.64388,-95.66882
+, -95.69779, -95.73109, -95.76676)
+final_sum_xi_po4<-sum_xi
+
+```
+
+```{r}
+data1<-rbind(data1516,data1617,data1718,data1819)
+data1
+```
+
+```{r}
+#input data
+k<-100
+s<-5
+
+train_data<-data1[1:(dim(data1)[1]-k),]
+test_data<-data1[(dim(data1)[1]-k+1):dim(data1)[1],]
+predict<-c()
+while (!(is.null(test_data))){
+my_weights <- weights_dc(train_data$Date, xi=final_xi_value)
+
+gm_res_dc <- goalmodel(goals1 = train_data$hgoal, goals2 = train_data$vgoal,
+                     team1 = train_data$home, team2=train_data$visitor,
+                     dc=TRUE,weights = my_weights,optim_method = "L-BFGS-B")
+
+if (dim(test_data)[1]>s){
+  predict<-rbind(predict,predict_result(gm_res_dc, team1=test_data[1:s,]$home, team2=test_data[1:s,]$visitor, return_df = TRUE))
+
+train_data<-rbind(train_data,test_data[1:s,])
+test_data<-test_data[(s+1):dim(test_data)[1],]}
+else{
+   predict<-rbind(predict,predict_result(gm_res_dc, team1=test_data$home, team2=test_data$visitor, return_df = TRUE))
+
+train_data<-rbind(train_data,test_data)
+test_data<-c()}
+}
+predict
+```
+
+
+```{r}
+bet<-function(x){x<-1/(x) 
+x<-x/rowSums(x)
+return(x)}
+```
+
+
+```{r}
+data1819_bet<-read.csv("C:\\Users\\lidai\\Desktop\\Football\\1819.csv")[281:380,c(44,46,48)]
+
+data1819_bet<-bet(data1819_bet)
+
+
+
+
+```
